@@ -18,7 +18,7 @@ describe('isAbsolute()', function() {
   it('should throw an error when the value is not a string.', function() {
     assert.throws(function() {
       isAbsolute();
-    }, 'isAbsolute expects a string.');
+    }, /isAbsolute expects a string/);
   });
 
   it('should pass all node native `path.win32.isAbsolute` tests:', function() {
