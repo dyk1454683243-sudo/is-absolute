@@ -85,3 +85,70 @@ describe('isAbsolute()', function() {
     assert.equal(isAbsolute.posix('/user/docs/Letter.txt'), true);
   });
 });
+
+/**
+ * Simulate webpack/interop yielding `{ default: fn }` instead of the function.
+ * Reloads index.js against a mocked is-windows export, then restores the cache.
+ */
+
+function loadWithIsWindows(mockExport) {
+  var indexPath = require.resolve('./');
+  var isWindowsPath = require.resolve('is-windows');
+  var isWindowsModule = require.cache[isWindowsPath];
+  var previousExports = isWindowsModule && isWindowsModule.exports;
+  var previousIndex = require.cache[indexPath];
+
+  if (!isWindowsModule) {
+    require('is-windows');
+    isWindowsModule = require.cache[isWindowsPath];
+    previousExports = isWindowsModule.exports;
+  }
+
+  isWindowsModule.exports = mockExport;
+  delete require.cache[indexPath];
+
+  try {
+    return require('./');
+  } finally {
+    isWindowsModule.exports = previousExports;
+    if (previousIndex) {
+      require.cache[indexPath] = previousIndex;
+    } else {
+      delete require.cache[indexPath];
+    }
+  }
+}
+
+describe('is-windows interop', function() {
+  it('should unwrap a webpack-style default export and use posix rules', function() {
+    var loaded = loadWithIsWindows({
+      __esModule: true,
+      default: function() {
+        return false;
+      }
+    });
+    assert.equal(typeof loaded, 'function');
+    assert.equal(loaded('/foo'), true);
+    assert.equal(loaded('c:\\'), false);
+    assert.equal(loaded('foo'), false);
+  });
+
+  it('should unwrap a webpack-style default export and use win32 rules', function() {
+    var loaded = loadWithIsWindows({
+      default: function() {
+        return true;
+      }
+    });
+    assert.equal(loaded('c:\\'), true);
+    assert.equal(loaded('/foo'), true);
+    assert.equal(loaded('foo'), false);
+  });
+
+  it('should keep working when is-windows is already a function', function() {
+    var loaded = loadWithIsWindows(function() {
+      return false;
+    });
+    assert.equal(loaded('/foo'), true);
+    assert.equal(loaded('c:\\'), false);
+  });
+});

@@ -2,6 +2,9 @@
 
 var isRelative = require('is-relative');
 var isWindows = require('is-windows');
+if (typeof isWindows !== 'function') {
+  isWindows = isWindows && isWindows.default;
+}
 
 /**
  * Expose `isAbsolute`
